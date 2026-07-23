@@ -2,46 +2,39 @@
   "name": "myn8n",
   "version": "1.0.0",
   "main": "main.js",
-
   "scripts": {
     "start": "electron .",
     "build": "electron-builder"
   },
-
-
   "build": {
     "appId": "com.company.myn8n",
-
     "productName": "MyN8N",
-
+    "asar": true,
+    "files": [
+      "main.js",
+      "package.json"
+    ],
     "extraResources": [
       {
-        "from": "runtime",
-        "to": "runtime"
+        "from": "runtime.tar.gz",
+        "to": "runtime.tar.gz"
       },
       {
-        "from": "node_modules",
-        "to": "node_modules"
+        "from": "n8n.tar.gz",
+        "to": "n8n.tar.gz"
       }
     ],
-
     "win": {
       "target": [
         "nsis"
       ]
-    },
-
-    "files": [
-      "main.js",
-      "package.json",
-      "runtime/**/*",
-      "node_modules/**/*",
-      "data/**/*"
-    ]
+    }
   },
-
   "devDependencies": {
-    "electron": "^latest",
-    "electron-builder": "^latest"
+    "electron": "latest",
+    "electron-builder": "latest"
+  },
+  "dependencies": {
+    "tar": "^7.5.21"
   }
 }
