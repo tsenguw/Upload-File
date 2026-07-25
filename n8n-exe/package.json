@@ -1,0 +1,55 @@
+{
+  "name": "myn8n",
+  "version": "2.31.5",
+  "description": "n8n workflow automation desktop app",
+  "author": "n8n",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "prepare-runtime": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\package-runtime.ps1",
+    "verify-runtime": "node scripts\\verify-runtime.js",
+    "prebuild": "npm run prepare-runtime && npm run verify-runtime",
+    "build": "electron-builder",
+    "test": "npm run verify-runtime"
+  },
+  "build": {
+    "appId": "com.company.myn8n",
+    "productName": "n8n",
+    "asar": true,
+    "files": [
+      "main.js",
+      "preload.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "runtime.7z",
+        "to": "runtime.7z"
+      },
+      {
+        "from": "n8n.7z",
+        "to": "n8n.7z"
+      }
+    ],
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "include": "build/installer.nsh",
+      "shortcutName": "n8n",
+      "uninstallDisplayName": "n8n"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    }
+  },
+  "devDependencies": {
+    "7zip-bin": "^5.2.0",
+    "electron": "latest",
+    "electron-builder": "latest"
+  }
+}

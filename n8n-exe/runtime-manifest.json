@@ -1,0 +1,11 @@
+{
+    "formatVersion":  1,
+    "runtimeId":  "sha256:83f5a95a913dc1d2f28c59f1f3eb0fd2d1da367bec2152cb5f715c0b629f5ae1",
+    "createdAt":  "2026-07-25T07:29:19.3310432Z",
+    "requiredFiles":  [
+                          "node_modules/n8n/bin/n8n",
+                          "node_modules/sqlite3/build/Release/node_sqlite3.node",
+                          "node_modules/@n8n/ai-workflow-builder/dist/prompts/chains/parameter-updater/registry.js",
+                          "node_modules/@n8n/ai-workflow-builder/dist/prompts/chains/parameter-updater/examples/index.js"
+                      ]
+}
