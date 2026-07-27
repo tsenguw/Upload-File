@@ -149,14 +149,17 @@ npm run verify-runtime
 
 `cleanup.ps1` 會改動 runtime dependency 資料夾，但採取保守策略，僅移除：
 
-- TypeScript declaration 檔與 JavaScript source map。
+- TypeScript declaration 檔、declaration map、build metadata 與 JavaScript source map。
+- `agent-browser` 與 Selenium 內明確屬於 Linux/macOS 的 binary；Windows binary 保留。
+- `sqlite3` 與 `isolated-vm` 已有 Windows native binary 後不再需要的原生編譯原始碼與 source archive。
+- 非授權用途的 Markdown 文件；保留 LICENSE、NOTICE、COPYING、COPYRIGHT、PATENTS、AUTHORS 與第三方聲明。
 - repository metadata、CI、Docker、coverage 與 editor 設定檔。
 - 明確的非 Windows native prebuild 目錄。
 - 在 `package.json` 明確宣告為非 Windows 的套件。
 - 相依套件內的套件管理器 lock files 與空目錄。
 - 合法 `package.json` 中的縮排與換行；JSON 欄位和值維持不變。
 
-它會刻意保留 JavaScript runtime 檔、TypeScript 檔、`tests`、`examples`、`docs` 與套件目錄。不要加入泛用的 `tests`、`examples` 或 `.ts` 刪除規則：部分 n8n 相依套件會在 runtime 載入它們。
+它會刻意保留 JavaScript runtime 檔、TypeScript 檔、`tests`、`examples` 與套件目錄；只有非授權用途的 Markdown 會被移除。不要加入泛用的 `tests`、`examples` 或 `.ts` 刪除規則：部分 n8n 相依套件會在 runtime 載入它們。
 
 若要先預覽清理結果、不實際刪除檔案：
 
