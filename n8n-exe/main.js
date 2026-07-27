@@ -11,7 +11,12 @@ let isQuitting = false;
 const resourceRoot = app.isPackaged ? process.resourcesPath : __dirname;
 const userRoot = path.join(os.homedir(), "AppData", "Local", "MyN8N");
 const logFile = path.join(userRoot, "n8n-launcher.log");
-const installedRuntimeRoot = userRoot;
+// The installer is per-machine, so the read-only runtime lives under the
+// protected application resources directory and is shared by all accounts.
+// User-specific n8n data and logs remain under userRoot.
+const installedRuntimeRoot = app.isPackaged
+    ? path.join(resourceRoot, "n8n-runtime")
+    : userRoot;
 const defaultRequiredFiles = [
     "node.exe",
     "node_modules/n8n/bin/n8n",
