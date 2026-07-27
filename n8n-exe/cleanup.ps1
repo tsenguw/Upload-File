@@ -50,11 +50,14 @@ function Remove-SafeRuntimeDirectory {
 }
 
 Write-Output "Cleaning runtime: $nodeModulesPath"
-Write-Output 'Keeping all .js, .cjs, .mjs, .ts, tests, examples, docs, and package directories.'
+Write-Output 'Keeping .js, .cjs, .mjs, .ts, tests, examples, package directories, and legal Markdown files.'
 
-# Phase 1 - Delete TypeScript declarations and JavaScript source maps.
+# Phase 1 - Delete TypeScript declarations, declaration maps, build metadata, and JavaScript source maps.
 # Node.js does not execute these files; stack traces may lose source-map mapping only.
-$safeFilePatterns = @('*.d.ts', '*.js.map', '*.cjs.map', '*.mjs.map')
+$safeFilePatterns = @(
+    '*.d.ts', '*.d.ts.map', '*.d.cts.map', '*.d.mts.map', '*.tsbuildinfo',
+    '*.js.map', '*.cjs.map', '*.mjs.map'
+)
 foreach ($pattern in $safeFilePatterns) {
     Get-ChildItem -LiteralPath $nodeModulesPath -Recurse -File -Filter $pattern -ErrorAction SilentlyContinue |
         ForEach-Object { Remove-SafeRuntimeFile $_ }
@@ -80,7 +83,43 @@ Get-ChildItem -LiteralPath $nodeModulesPath -Recurse -Directory -Filter 'prebuil
             ForEach-Object { Remove-SafeRuntimeDirectory $_ }
     }
 
-# Phase 4 - Delete top-level packages that explicitly declare a non-Windows OS.
+# Phase 4 - Delete known non-Windows executable resources bundled alongside Windows binaries.
+# These packages select a binary from process.platform at runtime; Windows files remain intact.
+$agentBrowserBinaryDirectory = Join-Path $nodeModulesPath 'agent-browser\bin'
+if (Test-Path -LiteralPath $agentBrowserBinaryDirectory -PathType Container) {
+    Get-ChildItem -LiteralPath $agentBrowserBinaryDirectory -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match '^agent-browser-(linux|darwin)-' } |
+        ForEach-Object { Remove-SafeRuntimeFile $_ }
+}
+
+$seleniumNonWindowsDirectories = @(
+    (Join-Path $nodeModulesPath 'selenium-webdriver\bin\linux'),
+    (Join-Path $nodeModulesPath 'selenium-webdriver\bin\macos')
+)
+foreach ($directoryPath in $seleniumNonWindowsDirectories) {
+    if (Test-Path -LiteralPath $directoryPath -PathType Container) {
+        Remove-SafeRuntimeDirectory (Get-Item -LiteralPath $directoryPath)
+    }
+}
+
+# Phase 5 - Delete build-only source inputs from native packages with retained Windows binaries.
+# sqlite3 keeps node_sqlite3.node and isolated-vm keeps its ABI 137 prebuild; neither recompiles at runtime.
+$nativeBuildArtifactPaths = @(
+    'sqlite3\deps', 'sqlite3\src', 'sqlite3\binding.gyp',
+    'isolated-vm\src', 'isolated-vm\vendor', 'isolated-vm\binding.gyp', 'isolated-vm\isolated-vm-6.1.2.tgz'
+)
+foreach ($relativePath in $nativeBuildArtifactPaths) {
+    $artifactPath = Join-Path $nodeModulesPath $relativePath
+    if (-not (Test-Path -LiteralPath $artifactPath)) { continue }
+    $artifact = Get-Item -LiteralPath $artifactPath
+    if ($artifact.PSIsContainer) {
+        Remove-SafeRuntimeDirectory $artifact
+    } else {
+        Remove-SafeRuntimeFile $artifact
+    }
+}
+
+# Phase 6 - Delete top-level packages that explicitly declare a non-Windows OS.
 # The package.json `os` field is checked, so names alone never decide deletion.
 $topLevelItems = Get-ChildItem -LiteralPath $nodeModulesPath -Directory -Force -ErrorAction SilentlyContinue
 $topLevelPackages = foreach ($item in $topLevelItems) {
@@ -110,7 +149,14 @@ foreach ($packageDirectory in $topLevelPackages) {
 }
 Write-Output "Removed $nonWindowsPackageCount top-level non-Windows packages."
 
-# Phase 5 - Delete CI, Docker, documentation-tool metadata, and nested lock files.
+# Phase 7 - Delete non-license Markdown documentation.
+# Preserve license, copyright, notice, patent, author, copying, and third-party attribution files.
+$legalMarkdownNamePattern = '^(LICENSE|LICENCE|COPYING|COPYRIGHT|NOTICE|THIRD[_-]?PARTY|PATENTS|AUTHORS)([._-].*)?\.md$'
+Get-ChildItem -LiteralPath $nodeModulesPath -Recurse -File -Filter '*.md' -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -notmatch $legalMarkdownNamePattern } |
+    ForEach-Object { Remove-SafeRuntimeFile $_ }
+
+# Phase 8 - Delete CI, Docker, documentation-tool metadata, and nested lock files.
 # Generic names such as HISTORY, SECURITY, tests, examples, and docs are deliberately excluded.
 $developmentFilePatterns = @(
     '.travis.yml', 'appveyor.yml',
@@ -124,7 +170,7 @@ foreach ($pattern in $developmentFilePatterns) {
         ForEach-Object { Remove-SafeRuntimeFile $_ }
 }
 
-# Phase 6 - Delete explicitly named development/coverage directories.
+# Phase 9 - Delete explicitly named development/coverage directories.
 $developmentDirectoryNames = @('.circleci', '.husky', '.changeset', '.devcontainer', '.vscode', '.idea', '.nyc_output', 'coverage')
 foreach ($directoryName in $developmentDirectoryNames) {
     Get-ChildItem -LiteralPath $nodeModulesPath -Recurse -Directory -Filter $directoryName -ErrorAction SilentlyContinue |
@@ -132,7 +178,7 @@ foreach ($directoryName in $developmentDirectoryNames) {
         ForEach-Object { Remove-SafeRuntimeDirectory $_ }
 }
 
-# Phase 7 - Delete empty directories left behind by earlier phases.
+# Phase 10 - Delete empty directories left behind by earlier phases.
 do {
     $removedEmptyDirectory = $false
     Get-ChildItem -LiteralPath $nodeModulesPath -Recurse -Directory -Force -ErrorAction SilentlyContinue |
@@ -145,7 +191,7 @@ do {
         }
 } while ($removedEmptyDirectory -and -not $WhatIfPreference)
 
-# Phase 8 - Minify package.json files without changing JSON fields or values.
+# Phase 11 - Minify package.json files without changing JSON fields or values.
 # The bundled Node.js runtime parses and serializes JSON; invalid manifests are left unchanged.
 if ($WhatIfPreference) {
     Write-Output "WhatIf: minify package.json files below $nodeModulesPath"
