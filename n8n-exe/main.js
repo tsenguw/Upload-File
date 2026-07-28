@@ -16,13 +16,74 @@ const logFile = path.join(userRoot, "n8n-launcher.log");
 // User-specific n8n data and logs remain under userRoot.
 const installedRuntimeRoot = app.isPackaged
     ? path.join(resourceRoot, "n8n-runtime")
-    : userRoot;
+    : path.join(__dirname, "n8n-runtime");
 const defaultRequiredFiles = [
     "node.exe",
     "node_modules/n8n/bin/n8n",
     "node_modules/sqlite3/build/Release/node_sqlite3.node",
     "node_modules/@n8n/ai-workflow-builder/dist/prompts/chains/parameter-updater/registry.js",
     "node_modules/@n8n/ai-workflow-builder/dist/prompts/chains/parameter-updater/examples/index.js",
+];
+// Hide and disable selected integrations in the node picker. NODES_EXCLUDE
+// disables execution as well, so workflows using these types cannot run.
+const hiddenGoogleNodeTypes = [
+    "n8n-nodes-base.gmail",
+    "n8n-nodes-base.gmailTrigger",
+    "n8n-nodes-base.gSuiteAdmin",
+    "n8n-nodes-base.googleAds",
+    "n8n-nodes-base.googleAnalytics",
+    "n8n-nodes-base.googleBigQuery",
+    "n8n-nodes-base.googleBooks",
+    "n8n-nodes-base.googleBusinessProfile",
+    "n8n-nodes-base.googleBusinessProfileTrigger",
+    "n8n-nodes-base.googleCalendar",
+    "n8n-nodes-base.googleCalendarTrigger",
+    "n8n-nodes-base.googleChat",
+    "n8n-nodes-base.googleCloudNaturalLanguage",
+    "n8n-nodes-base.googleCloudStorage",
+    "n8n-nodes-base.googleContacts",
+    "n8n-nodes-base.googleDocs",
+    "n8n-nodes-base.googleDrive",
+    "n8n-nodes-base.googleDriveTrigger",
+    "n8n-nodes-base.googleFirebaseCloudFirestore",
+    "n8n-nodes-base.googleFirebaseRealtimeDatabase",
+    "n8n-nodes-base.googlePerspective",
+    "n8n-nodes-base.googleSheets",
+    "n8n-nodes-base.googleSheetsTrigger",
+    "n8n-nodes-base.googleSlides",
+    "n8n-nodes-base.googleTasks",
+    "n8n-nodes-base.googleTranslate",
+    "n8n-nodes-base.youTube",
+    "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+    "@n8n/n8n-nodes-langchain.embeddingsGoogleVertex",
+    "@n8n/n8n-nodes-langchain.googleGemini",
+    "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+    "@n8n/n8n-nodes-langchain.lmChatGoogleVertex",
+];
+const hiddenOpenAiNodeTypes = [
+    "n8n-nodes-base.openAi",
+    "@n8n/n8n-nodes-langchain.embeddingsAzureOpenAi",
+    "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+    "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+    "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+    "@n8n/n8n-nodes-langchain.lmOpenAi",
+    "@n8n/n8n-nodes-langchain.openAi",
+    "@n8n/n8n-nodes-langchain.openAiAssistant",
+];
+const hiddenAdditionalAiProviderNodeTypes = [
+    "@n8n/n8n-nodes-langchain.anthropic",
+    "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+    "@n8n/n8n-nodes-langchain.minimax",
+    "@n8n/n8n-nodes-langchain.lmChatMinimax",
+    "@n8n/n8n-nodes-langchain.moonshot",
+    "@n8n/n8n-nodes-langchain.lmChatMoonshot",
+    "@n8n/n8n-nodes-langchain.alibabaCloud",
+    "@n8n/n8n-nodes-langchain.lmChatAlibabaCloud",
+];
+const hiddenNodeTypes = [
+    ...hiddenGoogleNodeTypes,
+    ...hiddenOpenAiNodeTypes,
+    ...hiddenAdditionalAiProviderNodeTypes,
 ];
 
 const LOADING_HTML = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
@@ -90,6 +151,8 @@ function startN8N() {
             ...process.env,
             N8N_USER_FOLDER: path.join(userRoot, "data"),
             N8N_PORT: "5678",
+            N8N_RESTRICT_FILE_ACCESS_TO: "",
+            NODES_EXCLUDE: JSON.stringify(hiddenNodeTypes),
         },
     });
 
@@ -121,7 +184,7 @@ function waitForN8N() {
     }
 
     function poll() {
-        const request = http.get("http://127.0.0.1:5678/healthz", (response) => {
+        const request = http.get("http://127.0.0.1:5678/", (response) => {
             response.resume();
             if (response.statusCode === 200) {
                 log("n8n is ready");
