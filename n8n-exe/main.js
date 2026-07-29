@@ -141,19 +141,31 @@ function ensureRuntime() {
 function startN8N() {
     const nodePath = path.join(installedRuntimeRoot, "node.exe");
     const n8nPath = path.join(installedRuntimeRoot, "node_modules", "n8n", "bin", "n8n");
+    // n8n starts its internal Code-node task runner with `spawn("node")`.
+    // Prepend the bundled runtime so installed users do not need global Node.js.
+    const runtimePath = [installedRuntimeRoot, process.env.PATH]
+        .filter(Boolean)
+        .join(path.delimiter);
+    const n8nEnvironment = { ...process.env };
+    // Windows environment-variable names are case-insensitive. Remove an
+    // existing `Path` key before setting one canonical PATH value.
+    for (const key of Object.keys(n8nEnvironment)) {
+        if (key.toUpperCase() === "PATH") delete n8nEnvironment[key];
+    }
+    Object.assign(n8nEnvironment, {
+        PATH: runtimePath,
+        N8N_USER_FOLDER: path.join(userRoot, "data"),
+        N8N_PORT: "5678",
+        N8N_RESTRICT_FILE_ACCESS_TO: "",
+        NODES_EXCLUDE: JSON.stringify(hiddenNodeTypes),
+    });
     showLoadingScreen("Starting n8n…");
 
     n8nProcess = spawn(nodePath, [n8nPath], {
         cwd: userRoot,
         windowsHide: true,
         detached: false,
-        env: {
-            ...process.env,
-            N8N_USER_FOLDER: path.join(userRoot, "data"),
-            N8N_PORT: "5678",
-            N8N_RESTRICT_FILE_ACCESS_TO: "",
-            NODES_EXCLUDE: JSON.stringify(hiddenNodeTypes),
-        },
+        env: n8nEnvironment,
     });
 
     n8nProcess.on("exit", (code, signal) => {
