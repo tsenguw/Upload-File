@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elastic-package-registry
+  namespace: efk
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: elastic-package-registry
+
+  template:
+    metadata:
+      labels:
+        app: elastic-package-registry
+
+    spec:
+      containers:
+        - name: package-registry
+          image: docker.elastic.co/package-registry/distribution:8.5.3
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 8080
+              name: http
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elastic-package-registry
+  namespace: efk
+
+spec:
+  type: ClusterIP
+
+  selector:
+    app: elastic-package-registry
+
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
